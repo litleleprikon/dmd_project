@@ -1,0 +1,3 @@
+requests ==2.7.0
+LIVR ==0.4.31
+tornado ==4.2.1

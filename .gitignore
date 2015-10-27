@@ -5,6 +5,18 @@ __pycache__/
 # C extensions
 *.so
 
+# JetBrains config folder
+.idea/
+
+# Python venv folder
+venv
+
+# INI files
+*.ini
+
+# SQLite database file
+database.sqlite
+
 # Distribution / packaging
 .Python
 env/
