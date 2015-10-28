@@ -3,6 +3,7 @@ from xml.etree import ElementTree as etree
 import requests
 from parser.classes import *
 import logging
+from traceback import format_exc
 
 
 __author__ = 'litleleprikon'
@@ -21,15 +22,15 @@ DOC_TYPES = {
 }
 
 
-def log(doc, ex):
+def log(doc, traceback):
     logging.error('''=== On document ===
 ===================
 {0:s}
 ===================
 
 === Traceback ===
-{0:s}
-================='''.format(doc, ex))
+{1:s}
+================='''.format(doc, traceback))
 
 
 def make_request(year, page, ctype):
@@ -49,7 +50,7 @@ def handle_data_set(parsed_data, doc_type):
             doc_type(document).push()
             i += 1
         except Exception as ex:
-            log(document, str(ex))
+            log(etree.tostring(document, encoding='utf8', method='xml').decode(), traceback=format_exc())
     return i
 
 

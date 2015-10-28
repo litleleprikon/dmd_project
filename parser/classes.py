@@ -24,7 +24,7 @@ class DBConnection:
     _connection = None
 
     def get_config(self):
-        return ConfigParser('../config.ini')['DATABASE']
+        return ConfigParser().read('../config.ini')['DATABASE']
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
