@@ -6,7 +6,7 @@ __author__ = 'litleleprikon'
 
 
 def get_collection(obj):
-    return '' if obj is None else [get_text(i) for i in obj.iter()]
+    return '' if obj is None else [x for x in obj.itertext() if x.replace('\n', '') != '']
 
 
 def mk_int(s):
@@ -24,7 +24,9 @@ class DBConnection:
     _connection = None
 
     def get_config(self):
-        return ConfigParser().read('../config.ini')['DATABASE']
+        config = ConfigParser()
+        config.read('../config.ini')
+        return config['DATABASE']
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -54,8 +56,8 @@ class Author:
         return cls._instances[name]
 
     def __init__(self, name):
-        self.name = name
-        self._id = self.__select(name)
+        self.name = name.strip()
+        self._id = self.__select(self.name)
         if self._id is None:
             self._id = self.__create()
 
@@ -64,7 +66,7 @@ class Author:
 
     def __select(self, name):
         DBConnection().cursor.execute('SELECT id FROM author WHERE name = %s', [name])
-        res = DBConnection().cursor.fetchone()[0]
+        res = DBConnection().cursor.fetchone()
         return res if res is None else res[0]
 
     def __create(self):
@@ -160,7 +162,7 @@ class Publication:
         self.id = None
         self.title = get_text(document_object.find('title'))
         self.year = mk_int(get_text(document_object.find('py')))
-        self.authors = map(Author, get_text(document_object.find('authors')).split(';'))
+        self.authors = [Author(x) for x in get_text(document_object.find('authors')).split(';')]
         self._publisher = Publisher(get_text(document_object.find('publisher')))
         self.pdf = get_text(document_object.find('pdf'))
         self._type = PubType(get_text(document_object.find('pubtype')))
@@ -231,14 +233,14 @@ RETURNING id
         """
         DBConnection().cursor.execute(sql, self)
         self.id = DBConnection().cursor.fetchone()[0]
-        map(lambda x: x.link_with_publication(self.id), self.authors)
+        [x.link_with_publication(self.id) for x in self.authors]
 
 
 class Conference(Publication):
     def __init__(self, document_object):
         super().__init__(document_object)
         self.affiliation = get_text(document_object.find('affiliation'))
-        self.thesaurus = map(Thesaurus, get_collection(document_object.find('thesaurusterms')))
+        self.thesaurus = [Thesaurus(x) for x in get_collection(document_object.find('thesaurusterms'))]
         self.isbn = get_text(document_object.find('isbn')).replace('-', '')
         self.pu_number = mk_int(get_text(document_object.find('punumber')))
 
@@ -282,15 +284,15 @@ RETURNING id
         """
         DBConnection().cursor.execute(sql, self)
         self.id = DBConnection().cursor.fetchone()[0]
-        map(lambda x: x.link_with_publication(self.id), self.authors)
-        map(lambda x: x.link_with_publication(self.id), self.thesaurus)
+        [x.link_with_publication(self.id) for x in self.authors]
+        [x.link_with_publication(self.id) for x in self.thesaurus]
 
 
 class Journal(Publication):
     def __init__(self, document_object):
         super().__init__(document_object)
         self.affiliations = get_text(document_object.find('affiliation'))
-        self.thesaurus = map(Thesaurus, get_collection(document_object.find('thesaurusterms')))
+        self.thesaurus = [Thesaurus(x) for x in get_collection(document_object.find('thesaurusterms'))]
         self.pu_number = mk_int(get_text(document_object.find('punumber')))
         self.pub_title = get_text(document_object.find('pubtitle'))
         self.issn = get_text(document_object.find('issn')).replace('-', '')
@@ -343,8 +345,8 @@ RETURNING id
         """
         DBConnection().cursor.execute(sql, self)
         self.id = DBConnection().cursor.fetchone()[0]
-        map(lambda x: x.link_with_publication(self.id), self.authors)
-        map(lambda x: x.link_with_publication(self.id), self.thesaurus)
+        [x.link_with_publication(self.id) for x in self.authors]
+        [x.link_with_publication(self.id) for x in self.thesaurus]
 
 
 class Singleton(object):

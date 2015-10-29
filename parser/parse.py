@@ -23,14 +23,16 @@ DOC_TYPES = {
 
 
 def log(doc, traceback):
-    logging.error('''=== On document ===
+    info = '''=== On document ===
 ===================
 {0:s}
 ===================
 
 === Traceback ===
 {1:s}
-================='''.format(doc, traceback))
+================='''.format(doc, traceback)
+    print(info)
+    logging.error(info)
 
 
 def make_request(year, page, ctype):
