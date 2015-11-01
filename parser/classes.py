@@ -48,13 +48,6 @@ class DBConnection:
 
 
 class Author:
-    _instances = dict()
-
-    def __new__(cls, name):
-        if name not in cls._instances:
-            cls._instances[name] = super().__new__(cls)
-        return cls._instances[name]
-
     def __init__(self, name):
         self.name = name.strip()
         self._id = self.__select(self.name)
@@ -74,8 +67,11 @@ class Author:
         return DBConnection().cursor.fetchone()[0]
 
     def link_with_publication(self, pub_id):
-        DBConnection().cursor.execute('INSERT INTO author_of_publication (author_id, publication_id) VALUES (%s, %s)',
+        try:
+            DBConnection().cursor.execute('INSERT INTO author_of_publication (author_id, publication_id) VALUES (%s, %s)',
                                       [self._id, pub_id])
+        except Exception as ex:
+            pass
 
 
 class Publisher:
@@ -162,7 +158,7 @@ class Publication:
         self.id = None
         self.title = get_text(document_object.find('title'))
         self.year = mk_int(get_text(document_object.find('py')))
-        self.authors = [Author(x) for x in get_text(document_object.find('authors')).split(';')]
+        self.authors = [Author(x) for x in get_text(document_object.find('authors')).split(';') if x != '']
         self._publisher = Publisher(get_text(document_object.find('publisher')))
         self.pdf = get_text(document_object.find('pdf'))
         self._type = PubType(get_text(document_object.find('pubtype')))
