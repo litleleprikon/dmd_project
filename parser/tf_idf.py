@@ -25,13 +25,14 @@ cursor2 = con.cursor()
 
 
 def count_words():
-    cursor.execute('SELECT abstract from project.publication limit 10')
+    cursor.execute('SELECT id, abstract from project.publication limit 10')
     for abstract in cursor:
-        for word in SPLIT_RE.split(abstract[0]):
+        d_id = abstract[0]
+        for word in SPLIT_RE.split(abstract[1]):
             word = REMOVE_TAGS_RE.sub('', word).lower()
-            cursor2.execute('select id from project.temp_word where word = %s', [word])
+            cursor2.execute('select id from project.temp_word where word = %s and document = %s', [word, d_id])
             if cursor2.rowcount == 0:
-                cursor2.execute('insert into project.temp_word (word) VALUES (%s) returning id', [word])
+                cursor2.execute('insert into project.temp_word (word, document) VALUES (%s, %s) returning id', [word, d_id])
             w_id = cursor2.fetchone()[0]
             cursor2.execute('UPDATE project.temp_word SET count = count + 1 WHERE id = %s', [w_id])
 
