@@ -10,6 +10,11 @@ SPLIT_RE = re.compile(r" |(?<! |[',\\.:!()@/<>])(?=[',\\.:!()@/<>])|(?<=[',\\.:!
 REMOVE_TAGS_RE = re.compile(r'<[A-Za-z\/][^>]*>')
 
 
+stop_words = None
+with open('stop_words.txt', 'r') as sw:
+    stop_words = set(map(lambda x: x.replace('\n', ''), sw.readlines()))
+
+
 def get_config():
     config = ConfigParser()
     config.read('../config.ini')
@@ -30,6 +35,8 @@ def count_words():
         d_id = abstract[0]
         for word in SPLIT_RE.split(abstract[1]):
             word = REMOVE_TAGS_RE.sub('', word).lower()
+            if word in stop_words:
+                continue
             cursor2.execute('select id from project.temp_word where word = %s and document = %s', [word, d_id])
             if cursor2.rowcount == 0:
                 cursor2.execute('insert into project.temp_word (word, document) VALUES (%s, %s) returning id', [word, d_id])
