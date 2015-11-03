@@ -30,7 +30,7 @@ cursor2 = con.cursor()
 
 
 def count_words():
-    cursor.execute('SELECT id, abstract from project.publication limit 10')
+    cursor.execute('SELECT id, abstract from project.publication')
     for abstract in cursor:
         d_id = abstract[0]
         for word in SPLIT_RE.split(abstract[1]):

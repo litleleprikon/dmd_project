@@ -34,9 +34,7 @@ LOGIN_VALIDATOR = Validator({
 
 class AuthReqHandler(BaseHandler):
     def get_current_user(self):
-        sid = self.get_secure_cookie('sid')
-        cursor = self.application.db.execute('SELECT uid FROM project.sessions WHERE sid = %s', sid)
-        return cursor.fetchone()[0]
+        return self.get_secure_cookie('uid')
 
 
 class UserHandler(BaseHandler):
@@ -84,11 +82,11 @@ class LoginHandler(BaseHandler):
             self.set_status(400)
             self.finish(json_encode({'status': 'fail', 'message': 'Incorrect password'}))
             return
-        sid = uuid4().hex
-        cursor = yield self.application.db.execute(
-            'INSERT INTO project.sessions (sid, uid) VALUES (%s, %s)',
-            [sid, user_id])
-        self.set_secure_cookie('sid', sid)
+        self.set_secure_cookie('uid', str(user_id))
         self.finish(json_encode({'status': 'success', 'message': 'Login successful'}))
 
 
+HANDLERS = [
+    (r'/user', UserHandler),
+    (r'/login', LoginHandler)
+]
