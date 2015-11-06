@@ -3,11 +3,13 @@ from uuid import uuid4
 from tornado import gen
 from LIVR.Validator import Validator
 from web_application.base import BaseHandler
-from zxcvbn import password_strength
+import re
 from tornado.escape import json_encode
 from hashlib import sha512
 
 __author__ = 'litleleprikon'
+
+STRONG_PASS_RE = re.compile(r'(?=^.{8,}$)(?=.*\d)(?=.*[!@#$%^&*]+)(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$')
 
 
 class StrongPassword(object):
@@ -15,7 +17,7 @@ class StrongPassword(object):
         rule_builders = args[0]
 
     def __call__(self, value, all_values, output_array):
-        if password_strength(value)['score'] < 2:
+        if not STRONG_PASS_RE.match(value):
             return "WEAK_PASSWORD"
 
 Validator.register_default_rules({'strong_pass': StrongPassword})
