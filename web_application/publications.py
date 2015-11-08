@@ -251,12 +251,12 @@ class JournalHandler(PublicationHandler):
         record['thesauruses'] = thesauruses
 
 HANDLERS = [
-    (r'/publications', PublicationsListHandler),
-    (r'/books', BooksListHandler),
-    (r'/conferenceS', JournalsListHandler),
-    (r'/journals', JournalsListHandler),
-    (r"/publications/([0-9]+)", PublicationHandler),
-    (r"/books/([0-9]+)", BookHandler),
-    (r"/conferences/([0-9]+)", ConferenceHandler),
-    (r"/journals/([0-9]+)", JournalHandler)
+    (r'/api/publications', PublicationsListHandler),
+    (r'/api/books', BooksListHandler),
+    (r'/api/conferenceS', JournalsListHandler),
+    (r'/api/journals', JournalsListHandler),
+    (r"/api/publications/([0-9]+)", PublicationHandler),
+    (r"/api/books/([0-9]+)", BookHandler),
+    (r"/api/conferences/([0-9]+)", ConferenceHandler),
+    (r"/api/journals/([0-9]+)", JournalHandler)
 ]

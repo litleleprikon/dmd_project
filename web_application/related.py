@@ -68,8 +68,7 @@ class TfIdfRelated(AuthReqHandler):
         self.finish(json_encode(result))
 
 
-
 HANDLERS = [
-    (r'/related/simple/([0-9]+)', SimpleRelated),
-    (r'/related/tfidf/([0-9]+)', TfIdfRelated),
+    (r'/api/related/simple/([0-9]+)', SimpleRelated),
+    (r'/api/related/tfidf/([0-9]+)', TfIdfRelated),
 ]

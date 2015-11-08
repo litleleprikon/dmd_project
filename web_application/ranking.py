@@ -49,5 +49,5 @@ class SearchHandler(AuthReqHandler):
         self.finish(json_encode(result))
 
 HANDLERS = [
-    (r'/search', SearchHandler)
+    (r'/api/search', SearchHandler)
 ]
