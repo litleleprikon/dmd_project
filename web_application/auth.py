@@ -41,6 +41,9 @@ class AuthReqHandler(BaseHandler):
         if uid is None:
             self.set_status(401)
             self.finish('Unauthorized')
+            return
+        else:
+            return uid
 
 
 class UserHandler(BaseHandler):
