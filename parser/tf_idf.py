@@ -30,18 +30,29 @@ cursor2 = con.cursor()
 
 
 def count_words():
-    cursor.execute('SELECT id, abstract from project.publication')
-    for abstract in cursor:
-        d_id = abstract[0]
-        for word in SPLIT_RE.split(abstract[1]):
-            word = REMOVE_TAGS_RE.sub('', word).lower()
-            if word in stop_words:
-                continue
-            cursor2.execute('select id from project.temp_word where word = %s and document = %s', [word, d_id])
-            if cursor2.rowcount == 0:
-                cursor2.execute('insert into project.temp_word (word, document) VALUES (%s, %s) returning id', [word, d_id])
-            w_id = cursor2.fetchone()[0]
-            cursor2.execute('UPDATE project.temp_word SET count = count + 1 WHERE id = %s', [w_id])
+    page = 0
+    while True:
+        cursor.execute('SELECT id, abstract from project.publication LIMIT 10 OFFSET %s', [page*10])
+        page += 1
+        if cursor.rowcount == 0:
+            break
+
+        for abstract in cursor:
+            d_id = abstract[0]
+            for word in SPLIT_RE.split(abstract[1]):
+                word = REMOVE_TAGS_RE.sub('', word).lower()
+                if word in stop_words:
+                    continue
+                cursor2.execute('select id from project.keyword where word = %s', [word])
+                if cursor2.rowcount == 0:
+                    cursor2.execute('insert into project.keyword (word) VALUES (%s) returning id', [word])
+                w_id = cursor2.fetchone()[0]
+                cursor2.execute('select id from project.word_in_text where word_id = %s and publication_id = %s',
+                                [w_id, d_id])
+                if cursor2.rowcount == 0:
+                    cursor2.execute('''insert into project.word_in_text (publication_id, word_id) VALUES (%s, %s)''',
+                                    [d_id, w_id])
+                cursor2.execute('UPDATE project.word_in_text SET count = count + 1 WHERE publication_id = %s and word_id = %s', [d_id, w_id])
 
 
 def main():
