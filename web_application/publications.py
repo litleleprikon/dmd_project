@@ -55,7 +55,7 @@ class PublicationsListHandler(AuthReqHandler):
         sort_column = 0 if arguments.get('sort') is None else int(arguments['sort'][0])
         if sort_column > 1:
             sort_column = 1
-        ordering = ['title', 'year DESK']
+        ordering = ['title', 'year DESC']
         sql = self.GET_SQL.format(ordering[sort_column])
         cursor = yield self.application.db.execute(sql, {'limit': page_size, 'offset': page*page_size})
         result = []  # TODO create index on title and year
