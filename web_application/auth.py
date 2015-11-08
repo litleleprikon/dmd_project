@@ -89,6 +89,6 @@ class LoginHandler(BaseHandler):
 
 
 HANDLERS = [
-    (r'/api/user', UserHandler),
-    (r'/api/login', LoginHandler)
+    (r'/api/user/?', UserHandler),
+    (r'/api/login/?', LoginHandler)
 ]

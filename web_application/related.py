@@ -69,6 +69,6 @@ class TfIdfRelated(AuthReqHandler):
 
 
 HANDLERS = [
-    (r'/api/related/simple/([0-9]+)', SimpleRelated),
-    (r'/api/related/tfidf/([0-9]+)', TfIdfRelated),
+    (r'/api/related/simple/([0-9]+)/?', SimpleRelated),
+    (r'/api/related/tfidf/([0-9]+)/?', TfIdfRelated),
 ]
