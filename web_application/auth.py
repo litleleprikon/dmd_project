@@ -2,6 +2,7 @@
 from uuid import uuid4
 from tornado import gen
 from LIVR.Validator import Validator
+from tornado.web import authenticated
 from web_application.base import BaseHandler
 import re
 from tornado.escape import json_encode
@@ -87,6 +88,10 @@ class LoginHandler(BaseHandler):
         self.set_secure_cookie('uid', str(user_id))
         self.finish(json_encode({'status': 'success', 'message': 'Login successful'}))
 
+    @authenticated
+    @gen.coroutine
+    def delete(self):
+        self.clear_cookie('uid')
 
 HANDLERS = [
     (r'/api/user/?', UserHandler),
