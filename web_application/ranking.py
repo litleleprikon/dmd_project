@@ -2,9 +2,8 @@
 import re
 from tornado import gen
 from tornado.escape import json_encode
-from tornado.ioloop import IOLoop
+from tornado.web import authenticated
 from web_application.auth import AuthReqHandler
-from web_application.base import DBConnection
 from web_application.publications import GetOrderedPublications
 
 __author__ = 'litleleprikon'
@@ -16,6 +15,7 @@ MINIMUM_PAGE_SIZE = 10
 
 
 class SearchHandler(AuthReqHandler):
+    @authenticated
     @gen.coroutine
     def get(self):
         arguments = self.request.arguments

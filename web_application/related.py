@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from tornado import gen
 from tornado.escape import json_encode
+from tornado.web import authenticated
 from web_application.auth import AuthReqHandler
 from web_application.publications import GetOrderedPublications
 
@@ -8,6 +9,7 @@ __author__ = 'litleleprikon'
 
 
 class SimpleRelated(AuthReqHandler):
+    @authenticated
     @gen.coroutine
     def get(self, pub_id):
         cursor = yield self.application.db.execute('''
@@ -37,6 +39,7 @@ class SimpleRelated(AuthReqHandler):
 
 
 class TfIdfRelated(AuthReqHandler):
+    @authenticated
     @gen.coroutine
     def get(self, pub_id):
         cursor = yield self.application.db.execute('''

@@ -46,7 +46,7 @@ class PublicationsListHandler(AuthReqHandler):
     OFFSET %(offset)s
 '''
 
-    # @authenticated
+    @authenticated
     @gen.coroutine
     def get(self):
         arguments = self.request.arguments
@@ -135,6 +135,7 @@ class PublicationHandler(AuthReqHandler):
     def add_collections(self, record):
         pass
 
+    @authenticated
     @gen.coroutine
     def get(self, pub_id):
         cursor = yield self.application.db.execute(self.SQL_GET, [pub_id])
