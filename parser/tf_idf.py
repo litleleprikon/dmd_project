@@ -2,6 +2,7 @@
 from configparser import ConfigParser
 import re
 from psycopg2 import connect
+from datetime import datetime
 
 __author__ = 'litleleprikon'
 
@@ -23,7 +24,7 @@ def get_config():
 config = get_config()
 con = connect(database=config['Database'], user=config['User'], password=config['Password'],
               host=config['Host'])
-con.autocommit = True
+# con.autocommit = True
 
 cursor = con.cursor()
 cursor2 = con.cursor()
@@ -32,27 +33,47 @@ cursor2 = con.cursor()
 def count_words():
     page = 0
     while True:
-        cursor.execute('SELECT id, abstract from project.publication LIMIT 10 OFFSET %s', [page*10])
+        start = datetime.now()
+        cursor.execute('SELECT id, abstract from project.publication LIMIT 100 OFFSET %s', [page*100])
         page += 1
         if cursor.rowcount == 0:
             break
 
         for abstract in cursor:
             d_id = abstract[0]
-            for word in SPLIT_RE.split(abstract[1]):
-                word = REMOVE_TAGS_RE.sub('', word).lower()
-                if word in stop_words:
-                    continue
-                cursor2.execute('select id from project.keyword where word = %s', [word])
-                if cursor2.rowcount == 0:
-                    cursor2.execute('insert into project.keyword (word) VALUES (%s) returning id', [word])
-                w_id = cursor2.fetchone()[0]
-                cursor2.execute('select id from project.word_in_text where word_id = %s and publication_id = %s',
-                                [w_id, d_id])
-                if cursor2.rowcount == 0:
-                    cursor2.execute('''insert into project.word_in_text (publication_id, word_id) VALUES (%s, %s)''',
-                                    [d_id, w_id])
-                cursor2.execute('UPDATE project.word_in_text SET count = count + 1 WHERE publication_id = %s and word_id = %s', [d_id, w_id])
+            abstract = REMOVE_TAGS_RE.sub('', abstract[1]).lower()
+            words = [x for x in SPLIT_RE.split(abstract) if x not in stop_words]
+            word_counts = dict()
+            for word in words:
+                if word in word_counts:
+                    word_counts[word] += 1
+                else:
+                    word_counts[word] = 1
+            cursor2.execute('select word, id from project.keyword where word = ANY(%s)', [list(word_counts.keys())])
+            words_ids = {x[0]: x[1] for x in cursor2}
+            missed_words = [x for x in words if x not in words_ids]
+
+            values = ', '.join(["('{}')".format(x.replace("'", "''")) for x in missed_words])
+
+            if missed_words:
+                query = 'insert into project.keyword (word) VALUES {} RETURNING word, id'.format(values)
+                cursor2.execute(query)
+
+                for x in cursor2:
+                    words_ids[x[0]] = x[1]
+
+            for_insert = [{
+                'word_id': words_ids[word],
+                'count': word_counts[word],
+                'publication_id': d_id
+            } for word in words_ids]
+
+            cursor2.executemany('''
+            INSERT INTO project.word_in_text (word_id, publication_id, count)
+            VALUES (%(word_id)s, %(publication_id)s, %(count)s)
+            ''', for_insert)
+            con.commit()
+            print(datetime.now() - start)
 
 
 def main():
