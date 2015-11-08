@@ -12,7 +12,7 @@ MINIMUM_PAGE_SIZE = 4
 
 class GetOrderedPublications:
     GET_SQL = '''
-        SELECT p.id, title, abstract, pt.name AS p_type from project.{main_table:s} AS p
+        SELECT p.id, p.title, p.abstract, pt.name AS p_type from project.{main_table:s} AS p
         LEFT JOIN project.publication_type as pt ON p.type = pt.id
         {join:s}
         WHERE p.id = ANY(%s)
@@ -39,7 +39,7 @@ class GetOrderedPublications:
 
 class PublicationsListHandler(AuthReqHandler):
     GET_SQL = '''
-    SELECT p.id, title, abstract, pt.name AS p_type from project.publication AS p
+    SELECT p.id, p.title, p.abstract, pt.name AS p_type from project.publication AS p
     LEFT JOIN project.publication_type as pt ON p.type = pt.id
     ORDER BY p.{0:s}
     LIMIT %(limit)s
@@ -70,7 +70,7 @@ class PublicationsListHandler(AuthReqHandler):
 
 class BooksListHandler(PublicationsListHandler):
     GET_SQL = '''
-    SELECT p.id, title, abstract, pt.name AS p_type from project.book AS p
+    SELECT p.id, p.title, p.abstract, pt.name AS p_type from project.book AS p
     LEFT JOIN project.publication_type as pt ON p.type = pt.id
     ORDER BY p.{0:s}
     LIMIT %(limit)s
@@ -80,7 +80,7 @@ class BooksListHandler(PublicationsListHandler):
 
 class ConferencesListHandler(PublicationsListHandler):
     GET_SQL = '''
-    SELECT p.id, title, abstract, pt.name as p_type from project.conference AS p
+    SELECT p.id, p.title, p.abstract, pt.name as p_type from project.conference AS p
     LEFT JOIN project.publication_type as pt ON p.type = pt.id
     ORDER BY p.{0:s}
     LIMIT %(limit)s
@@ -90,7 +90,7 @@ class ConferencesListHandler(PublicationsListHandler):
 
 class JournalsListHandler(PublicationsListHandler):
     GET_SQL = '''
-    SELECT p.id, title, abstract, pt.name AS p_type from project.journal AS p
+    SELECT p.id, p.title, p.abstract, pt.name AS p_type from project.journal AS p
     LEFT JOIN project.publication_type as pt ON p.type = pt.id
     ORDER BY p.{0:s}
     LIMIT %(limit)s
