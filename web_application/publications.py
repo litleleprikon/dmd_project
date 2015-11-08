@@ -52,7 +52,7 @@ class PublicationsListHandler(AuthReqHandler):
         arguments = self.request.arguments
         page = 0 if arguments.get('page') is None else int(arguments['page'][0])
         page_size = MINIMUM_PAGE_SIZE if arguments.get('psize') is None else int(arguments['psize'][0])
-        sort_column = 0 if arguments.get('sort') is None or arguments.get('sort') > 1 else int(arguments['sort'][0])
+        sort_column = 0 if arguments.get('sort') is None or arguments.get['sort'][0] > 1 else int(arguments['sort'][0])
         ordering = ['title', 'year DESK']
         sql = self.GET_SQL.format(ordering[sort_column])
         cursor = yield self.application.db.execute(sql, {'limit': page_size, 'offset': page*page_size})

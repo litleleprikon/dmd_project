@@ -73,7 +73,7 @@ def count_words():
             VALUES (%(word_id)s, %(publication_id)s, %(count)s)
             ''', for_insert)
             con.commit()
-            print(datetime.now() - start)
+        print(datetime.now() - start)
 
 
 def main():
