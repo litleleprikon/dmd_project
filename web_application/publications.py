@@ -173,6 +173,7 @@ class BookHandler(PublicationHandler):
     LEFT JOIN project.publication_type AS pt ON p.type = pt.id WHERE p.id = %s
     '''
 
+
 class ConferenceHandler(PublicationHandler):
     SQL_GET = '''
     SELECT p.id as id,

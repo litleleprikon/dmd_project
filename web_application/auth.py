@@ -2,7 +2,7 @@
 from uuid import uuid4
 from tornado import gen
 from LIVR.Validator import Validator
-from tornado.web import authenticated
+from tornado.web import authenticated, Finish
 from web_application.base import BaseHandler
 import re
 from tornado.escape import json_encode
@@ -37,7 +37,11 @@ LOGIN_VALIDATOR = Validator({
 
 class AuthReqHandler(BaseHandler):
     def get_current_user(self):
-        return self.get_secure_cookie('uid')
+        uid = self.get_secure_cookie("uid")
+        if uid is None:
+            self.set_status(401)
+            self.finish('Unauthorized')
+            raise Finish()
 
 
 class UserHandler(BaseHandler):

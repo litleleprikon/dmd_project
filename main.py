@@ -28,7 +28,7 @@ def main():
         # xsrf_cookies=True,
         cookie_secret=config['WEBSERVICE']['CookieSecret'],
         # debug=True,
-        login_url='/login'
+        login_url='/api/login'
     )
     application = Application(handlers=handlers, debug=True, **settings)
     ioloop = IOLoop.instance()
