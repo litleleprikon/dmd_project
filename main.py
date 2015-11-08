@@ -27,10 +27,10 @@ def main():
         app_title=u"InnopolisU publications management system",
         # xsrf_cookies=True,
         cookie_secret=config['WEBSERVICE']['CookieSecret'],
-        # debug=True,
+        debug=True,
         login_url='/api/login'
     )
-    application = Application(handlers=handlers, debug=True, **settings)
+    application = Application(handlers=handlers, **settings)
     ioloop = IOLoop.instance()
     application.db = momoko.Pool(
         dsn='dbname={database:s} user={user:s} password={password:s} host={host:s} port=5432'.format(**config['DATABASE']),
@@ -44,7 +44,7 @@ def main():
     future.result()  # raises exception on connection error
 
     http_server = HTTPServer(application)
-    http_server.listen(8888, '0.0.0.0')
+    http_server.listen(8080, '0.0.0.0')
     ioloop.start()
 
 
