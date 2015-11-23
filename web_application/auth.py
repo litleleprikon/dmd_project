@@ -1,12 +1,12 @@
 #!/usr/bin/env python
+import json
 from uuid import uuid4
-from tornado import gen
+from aiohttp import web
 from LIVR.Validator import Validator
-from tornado.web import authenticated, Finish
-from web_application.base import BaseHandler
 import re
-from tornado.escape import json_encode
 from hashlib import sha512
+
+from web_application.base import validate
 
 __author__ = 'litleleprikon'
 
@@ -20,6 +20,7 @@ class StrongPassword(object):
     def __call__(self, value, all_values, output_array):
         if not STRONG_PASS_RE.match(value):
             return "WEAK_PASSWORD"
+
 
 Validator.register_default_rules({'strong_pass': StrongPassword})
 
@@ -35,71 +36,60 @@ LOGIN_VALIDATOR = Validator({
 })
 
 
-class AuthReqHandler(BaseHandler):
-    def get_current_user(self):
-        uid = self.get_secure_cookie("uid")
-        if uid is None:
-            self.set_status(401)
-            self.finish('Unauthorized')
-            return
+def authenticated(handler):
+    async def wrapper(request, *args):
+        sid = request.cookies.get('sid')
+        if sid:
+            with await request.app['db'].cursor() as cur:
+                await cur.execute("SELECT FROM session uid WHERE sid = %s", [sid])
+                if cur.rowcount == 0:
+                    return web.Response(body='Not authenticated', status=401)
+            return await handler(request, *args)
         else:
-            return uid
+            return web.Response(body='Not authenticated', status=401)
+
+    return wrapper
 
 
-class UserHandler(BaseHandler):
-    SUPPORTED_METHODS = ("POST", "PUT")
-
-    @gen.coroutine
-    def post(self):
-        valid_data = self.validate(CREATE_USER_VALIDATOR)
-        if not valid_data:
-            return
-        user_exists = yield self.application.db.execute(
-            'SELECT EXISTS (SELECT TRUE FROM project."user" WHERE username=%s);',
-            [valid_data['username']]
+@validate(CREATE_USER_VALIDATOR)
+async def create_user(request, valid_data):
+    if not valid_data:
+        return
+    await request.app.db.execute(
+        'SELECT EXISTS (SELECT TRUE FROM project."user" WHERE username=%s);',
+        [valid_data['username']]
+    )
+    if request.app.db.fetchone()[0]:
+        return web.Response(
+            body=json.dumps({'status': 'fail', 'message': 'User with this username already exist'}).encode(),
+            status=409
         )
-        if user_exists.fetchone()[0]:
-            self.set_status(409)
-            self.finish(json_encode({'status': 'fail', 'message': 'User with this username already exist'}))
-        salt = uuid4().hex
-        pass_hash = sha512(valid_data['password'].encode() + salt.encode()).hexdigest()
-        cursor = yield self.application.db.execute('''
+    salt = uuid4().hex
+    pass_hash = sha512(valid_data['password'].encode() + salt.encode()).hexdigest()
+    await request.app.db.execute('''
             INSERT INTO project.user (username, passhash, salt, email)
             VALUES (%s, %s, %s, %s)
             RETURNING id
         ''', [valid_data['username'], pass_hash, salt, valid_data['email']])
-        uid = cursor.fetchone()[0]
-        self.finish(json_encode({'status': 'success', 'message': 'User created', 'id': uid}))
+    uid = request.app.db.fetchone()[0]
+    return web.Response(body=json.dumps({'status': 'success', 'message': 'User created', 'id': uid}).encode())
 
 
-class LoginHandler(BaseHandler):
-    SUPPORTED_METHODS = ('POST', 'DELETE')
-
-    @gen.coroutine
-    def post(self):
-        valid_data = self.validate(LOGIN_VALIDATOR)
-        if not valid_data:
-            return
-        cursor = yield self.application.db.execute('SELECT id, passhash, salt FROM project."user" WHERE username = %s',
-                                             [valid_data['username']])
-        if cursor.rowcount == 0:
-            self.set_status(400)
-            self.finish(json_encode({'status': 'fail', 'message': 'No such user'}))
-            return
-        user_id, pass_hash, salt = cursor.fetchone()
-        if sha512(valid_data['password'].encode() + salt.encode()).hexdigest() != pass_hash:
-            self.set_status(400)
-            self.finish(json_encode({'status': 'fail', 'message': 'Incorrect password'}))
-            return
-        self.set_secure_cookie('uid', str(user_id))
-        self.finish(json_encode({'status': 'success', 'message': 'Login successful'}))
-
-    @authenticated
-    @gen.coroutine
-    def delete(self):
-        self.clear_cookie('uid')
-
-HANDLERS = [
-    (r'/api/user/?', UserHandler),
-    (r'/api/login/?', LoginHandler)
-]
+@validate(LOGIN_VALIDATOR)
+async def login_handler(request, valid_data):
+    if not valid_data:
+        return
+    await request.app.db.execute('SELECT id, passhash, salt FROM project."user" WHERE username = %s',
+                                 [valid_data['username']])
+    if request.app.db.rowcount == 0:
+        return web.Response(body=json.dumps({'status': 'fail', 'message': 'No such user'}).encode(),
+                            status=400)
+    user_id, pass_hash, salt = request.application.db.fetchone()
+    if sha512(valid_data['password'].encode() + salt.encode()).hexdigest() != pass_hash:
+        return web.Response(body=json.dumps({'status': 'fail', 'message': 'Incorrect password'}).encode(),
+                            status=400)
+    response = web.Response(body=json.dumps({'status': 'success', 'message': 'Login successful'}).encode())
+    sid = uuid4().hex
+    await request.app.db.execute("INSERT INTO session (uid, sid) values (%s, %s)", [user_id, sid])
+    response.set_cookie('sid', str(sid))
+    return response

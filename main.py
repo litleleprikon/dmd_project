@@ -1,53 +1,45 @@
 #!/usr/bin/env python
-import momoko
-from tornado.ioloop import IOLoop
-from tornado.httpserver import HTTPServer
+# from tornado import gen
+# from tornado.platform.asyncio import AsyncIOMainLoop
+import asyncio
+# from tornado.httpserver import HTTPServer
 from configparser import ConfigParser
-from tornado.web import Application
-from web_application.auth import HANDLERS as auth_handlers
-from web_application.publications import HANDLERS as pub_handlers
-from web_application.related import HANDLERS as related_handlers
-from web_application.ranking import HANDLERS as ranking_handlers
+# from tornado.web import Application
+from aiohttp import web
+
+from pyDBMS.pyDBMS.connection import connect
+# from web_application.auth import HANDLERS as auth_handlers, create_user, login_handler
+# from web_application.publications import HANDLERS as pub_handlers
+# from web_application.related import HANDLERS as related_handlers
+# from web_application.ranking import HANDLERS as ranking_handlers
+from web_application.auth import create_user, login_handler
 
 __author__ = 'litleleprikon'
 
 
-def main():
-    config = ConfigParser()
-    config.read('config.ini')
-    config = config
-
-    handlers = []
-    handlers.extend(pub_handlers)
-    handlers.extend(auth_handlers)
-    handlers.extend(related_handlers)
-    handlers.extend(ranking_handlers)
-
-    settings = dict(
-        app_title=u"InnopolisU publications management system",
-        # xsrf_cookies=True,
-        cookie_secret=config['WEBSERVICE']['CookieSecret'],
-        debug=True,
-        login_url='/api/login'
-    )
-    application = Application(handlers=handlers, **settings)
-    ioloop = IOLoop.instance()
-    application.db = momoko.Pool(
-        dsn='dbname={database:s} user={user:s} password={password:s} host={host:s} port=5432'.format(**config['DATABASE']),
-        size=2,
-        ioloop=ioloop,
-    )
-
-    future = application.db.connect()
-    ioloop.add_future(future, lambda f: ioloop.stop())
-    ioloop.start()
-    future.result()  # raises exception on connection error
-
-    http_server = HTTPServer(application)
-    http_server.listen(8080, '0.0.0.0')
-    ioloop.start()
+async def create_connection(loop):
+    connection = await connect(loop)
+    return await connection.cursor()
 
 
-if __name__ == '__main__':
-    main()
+app = web.Application()
+app.router.add_route('POST', '/api/user', create_user)
+app.router.add_route('POST', '/api/login', login_handler)
+
+loop = asyncio.get_event_loop()
+app.db = loop.run_until_complete(create_connection(loop))
+handler = app.make_handler()
+f = loop.create_server(handler, 'localhost', 8080)
+srv = loop.run_until_complete(f)
+print('serving on', srv.sockets[0].getsockname())
+try:
+    loop.run_forever()
+except KeyboardInterrupt:
+    pass
+finally:
+    loop.run_until_complete(handler.finish_connections(1.0))
+    srv.close()
+    loop.run_until_complete(srv.wait_closed())
+    loop.run_until_complete(app.finish())
+loop.close()
 

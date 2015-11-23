@@ -1,47 +1,32 @@
 #!/usr/bin/env python
-from configparser import ConfigParser
-from tornado.escape import json_decode, json_encode
-from tornado.web import RequestHandler
-from psycopg2 import connect
+import json
+from aiohttp import web
+
 
 __author__ = 'litleleprikon'
 
 
-class BaseHandler(RequestHandler):
-    def validate(self, validator):
-        data = json_decode(self.request.body.decode())
-        valid_data = validator.validate(data)
-        if valid_data:
-            return valid_data
-        else:
-            self.set_status(403)
-            self.finish(json_encode({'status': 'fail', 'message': '\n'.join(validator.get_errors())}))
-            return False
-
-
-class DBConnection:
-    _instance = None
-    _connection = None
-
-    def get_config(self):
-        config = ConfigParser()
-        config.read('../config.ini')
-        return config['DATABASE']
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls, *args, **kwargs)
-        return cls._instance
-
-    def __init__(self):
-        if self._connection is None:
-            config = self.get_config()
-            self._connection = connect(database=config['Database'], user=config['User'], password=config['Password'],
-                                       host=config['Host'])
-            self._connection.autocommit = True
-            self.cursor = self._connection.cursor()
-            self.cursor.execute("SET SCHEMA 'project'")
-
-    def __del__(self):
-        if self._connection is not None:
-            self._connection.close()
+def validate(valid_rules):
+    def validator(handler):
+        async def wrapper(request, *args):
+            data = await request.content.read()
+            try:
+                parsed_data = json.loads(data.decode())
+            except json.JSONDecodeError as ex:
+                response = web.Response(
+                    body=json.dumps({'status': 'fail', 'message': 'Data is not in JSON'}).encode(),
+                    status=403
+                )
+                return response
+            valid_data = parsed_data
+            if valid_data:
+                result = await handler(request, valid_data, *args)
+                return result
+            else:
+                response = web.Response(
+                    body=json.dumps({'status': 'fail', 'message': '\n'.join(valid_rules.get_errors())}).encode(),
+                    status=403
+                )
+                return response
+        return wrapper
+    return validator
