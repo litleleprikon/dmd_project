@@ -5,6 +5,8 @@ from pyDBMS.pyDBMS.connection import connect
 from web_application.auth import create_user, login_handler
 from web_application.publications import PublicationsListHandler, BooksListHandler, JournalsListHandler, \
     PublicationHandler, BookHandler, ConferenceHandler, JournalHandler
+from web_application.ranking import SearchHandler
+from web_application.related import SimpleRelated, TfIdfRelated
 
 __author__ = 'litleleprikon'
 
@@ -25,6 +27,9 @@ app.router.add_route('GET', r"/api/publications/{pub_id:\d+}", PublicationHandle
 app.router.add_route('GET', r"/api/books/{pub_id:\d+}", BookHandler().get)
 app.router.add_route('GET', r"/api/conferences/{pub_id:\d+}", ConferenceHandler().get)
 app.router.add_route('GET', r"/api/journals/{pub_id:\d+}", JournalHandler().get)
+app.router.add_route('GET', r'/api/search', SearchHandler().get)
+app.router.add_route('GET', r'/api/related/simple/{pub_id:\d+}', SimpleRelated().get)
+app.router.add_route('GET', r'/api/related/tfidf/{pub_id:\d+}', TfIdfRelated().get)
 
 
 loop = asyncio.get_event_loop()
