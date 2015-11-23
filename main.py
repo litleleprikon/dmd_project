@@ -1,18 +1,10 @@
 #!/usr/bin/env python
-# from tornado import gen
-# from tornado.platform.asyncio import AsyncIOMainLoop
 import asyncio
-# from tornado.httpserver import HTTPServer
-from configparser import ConfigParser
-# from tornado.web import Application
 from aiohttp import web
-
 from pyDBMS.pyDBMS.connection import connect
-# from web_application.auth import HANDLERS as auth_handlers, create_user, login_handler
-# from web_application.publications import HANDLERS as pub_handlers
-# from web_application.related import HANDLERS as related_handlers
-# from web_application.ranking import HANDLERS as ranking_handlers
 from web_application.auth import create_user, login_handler
+from web_application.publications import PublicationsListHandler, BooksListHandler, JournalsListHandler, \
+    PublicationHandler, BookHandler, ConferenceHandler, JournalHandler
 
 __author__ = 'litleleprikon'
 
@@ -25,6 +17,15 @@ async def create_connection(loop):
 app = web.Application()
 app.router.add_route('POST', '/api/user', create_user)
 app.router.add_route('POST', '/api/login', login_handler)
+app.router.add_route('GET', r'/api/publications', PublicationsListHandler().get)
+app.router.add_route('GET', r'/api/books', BooksListHandler().get)
+app.router.add_route('GET', r'/api/conferences', JournalsListHandler().get)
+app.router.add_route('GET', r'/api/journals', JournalsListHandler().get)
+app.router.add_route('GET', r"/api/publications/{pub_id:\d+}", PublicationHandler().get)
+app.router.add_route('GET', r"/api/books/{pub_id:\d+}", BookHandler().get)
+app.router.add_route('GET', r"/api/conferences/{pub_id:\d+}", ConferenceHandler().get)
+app.router.add_route('GET', r"/api/journals/{pub_id:\d+}", JournalHandler().get)
+
 
 loop = asyncio.get_event_loop()
 app.db = loop.run_until_complete(create_connection(loop))

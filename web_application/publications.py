@@ -1,8 +1,12 @@
 #!/usr/bin/env python
-from tornado import gen
-from tornado.escape import json_encode
-from tornado.web import authenticated, asynchronous
-from web_application.auth import AuthReqHandler
+import json
+
+from aiohttp import web
+# from tornado import gen
+# from tornado.escape import json_encode
+# from tornado.web import authenticated, asynchronous
+# from web_application.auth import AuthReqHandler
+from web_application.auth import authenticated
 
 __author__ = 'litleleprikon'
 
@@ -37,7 +41,7 @@ class GetOrderedPublications:
         return cls.GET_SQL.format(main_table=table, join=join, order=order)
 
 
-class PublicationsListHandler(AuthReqHandler):
+class PublicationsListHandler:
     GET_SQL = '''
     SELECT p.id, p.title, p.abstract, pt.name AS p_type from project.publication AS p
     LEFT JOIN project.publication_type as pt ON p.type = pt.id
@@ -47,19 +51,18 @@ class PublicationsListHandler(AuthReqHandler):
 '''
 
     @authenticated
-    @gen.coroutine
-    def get(self):
-        arguments = self.request.arguments
+    async def get(self, request):
+        arguments = request.GET
         page = 0 if arguments.get('page') is None else int(arguments['page'][0])
         page_size = MINIMUM_PAGE_SIZE if arguments.get('psize') is None else int(arguments['psize'][0])
         sort_column = 0 if arguments.get('sort') is None else int(arguments['sort'][0])
         if sort_column > 1:
             sort_column = 1
-        ordering = ['title', 'year DESC']
+        ordering = ['title', 'year']
         sql = self.GET_SQL.format(ordering[sort_column])
-        cursor = yield self.application.db.execute(sql, {'limit': page_size, 'offset': page*page_size})
+        await request.app.db.execute(sql, {'limit': page_size, 'offset': page * page_size})
         result = []  # TODO create index on title and year
-        for publication in cursor:
+        for publication in request.app.db:
             temp = {
                 'id': publication[0],
                 'title': publication[1],
@@ -67,7 +70,7 @@ class PublicationsListHandler(AuthReqHandler):
                 'p_type': publication[3]
             }
             result.append(temp)
-        self.finish(json_encode(result))
+        return web.Response(body=json.dumps(result).encode())
 
 
 class BooksListHandler(PublicationsListHandler):
@@ -100,7 +103,7 @@ class JournalsListHandler(PublicationsListHandler):
     '''
 
 
-class PublicationHandler(AuthReqHandler):
+class PublicationHandler:
     SQL_GET = '''
     SELECT p.id as id,
     title,
@@ -119,11 +122,11 @@ class PublicationHandler(AuthReqHandler):
     LEFT JOIN project.publication_type AS pt ON p.type = pt.id WHERE p.id = %s
     '''
 
-    @gen.coroutine
-    def add_authors(self, record):
+
+    async def add_authors(self, request, record):
         d_id = record['id']
         authors = []
-        cursor = yield self.application.db.execute('''
+        cursor = await request.app.db.execute('''
         SELECT a.name
         FROM project.author_of_publication AS ap
         LEFT JOIN project.author AS a ON a.id = ap.author_id
@@ -133,24 +136,22 @@ class PublicationHandler(AuthReqHandler):
             authors.append(author[0])
         record['authors'] = authors
 
-    @gen.coroutine
-    def add_collections(self, record):
+    @classmethod
+    def add_collections(self, request, record):
         pass
 
     @authenticated
-    @gen.coroutine
-    def get(self, pub_id):
-        cursor = yield self.application.db.execute(self.SQL_GET, [pub_id])
-        if cursor.rowcount == 0:
-            self.set_status(404)
-            self.finish(json_encode({'status': 'fail', 'message': 'Publication not found'}))
-            return
-        data = cursor.fetchone()
-        record = {x.name: data[i] for i, x in enumerate(cursor.description)}
-        yield self.add_authors(record)
-        yield self.add_collections(record)
-        self.write(json_encode(record))
-        self.finish()
+    async def get(self, request):
+        pub_id = request.match_info['pub_id']
+        await request.app.db.execute(self.SQL_GET, [pub_id])
+        if request.app.db.rowcount == 0:
+            return web.Response(body=json.dumps({'status': 'fail', 'message': 'Publication not found'}).encode(),
+                                status=404)
+        data = request.app.db.fetchone()
+        record = {x.name: data[i] for i, x in enumerate(request.app.db.description)}
+        await self.add_authors(request, record)
+        await self.add_collections(request, record)
+        return web.Response(body=json.dumps(record).encode())
 
 
 class BookHandler(PublicationHandler):
@@ -199,11 +200,11 @@ class ConferenceHandler(PublicationHandler):
     LEFT JOIN project.publication_type AS pt ON p.type = pt.id WHERE p.id = %s
     '''
 
-    @gen.coroutine
-    def add_collections(self, record):
+    @classmethod
+    async def add_collections(self, request, record):
         d_id = record['id']
         thesauruses = []
-        cursor = yield self.application.db.execute('''
+        cursor = await request.app.db.execute('''
         SELECT t.word
         FROM project.thesaurus_of_publication as tp
         LEFT JOIN project.thesaurus as t ON tp.thesaurus = t.id
@@ -240,11 +241,11 @@ class JournalHandler(PublicationHandler):
     LEFT JOIN project.publication_type AS pt ON p.type = pt.id WHERE p.id = %s
     '''
 
-    @gen.coroutine
-    def add_collections(self, record):
+    @classmethod
+    async def add_collections(self, request, record):
         d_id = record['id']
         thesauruses = []
-        cursor = yield self.application.db.execute('''
+        cursor = await request.application.db.execute('''
         SELECT t.word
         FROM project.thesaurus_of_publication as tp
         LEFT JOIN project.thesaurus as t ON tp.thesaurus = t.id
@@ -253,14 +254,3 @@ class JournalHandler(PublicationHandler):
         for thesaurus in cursor:
             thesauruses.append(thesaurus[0])
         record['thesauruses'] = thesauruses
-
-HANDLERS = [
-    (r'/api/publications/?', PublicationsListHandler),
-    (r'/api/books/?', BooksListHandler),
-    (r'/api/conferences/?', JournalsListHandler),
-    (r'/api/journals/?', JournalsListHandler),
-    (r"/api/publications/([0-9]+)/?", PublicationHandler),
-    (r"/api/books/([0-9]+)/?", BookHandler),
-    (r"/api/conferences/([0-9]+)/?", ConferenceHandler),
-    (r"/api/journals/([0-9]+)/?", JournalHandler)
-]
